@@ -1,0 +1,16 @@
+{
+	"rules": [
+		{
+			"rulePriority": 1,
+			"description": "Delete more than 20 images",
+			"selection": {
+				"tagStatus": "any",
+				"countType": "imageCountMoreThan",
+				"countNumber": 20
+			},
+			"action": {
+				"type": "expire"
+			}
+		}
+	]
+}

@@ -1,0 +1,52 @@
+version: 0.2
+env:
+  variables:
+    DOCKER_BUILDKIT: "1"
+    AWS_PAGER: ""
+
+phases:
+  install:
+    commands:
+      - pip3 install git-remote-codecommit
+  pre_build:
+    commands:
+      - eval $(ssh-agent)
+      - ssh-add - <<< "$BACKLOG_GIT_CREDENTIAL"
+      - ssh-keyscan $BACKLOG_SPACE_ID.git.$BACKLOG_DOMAIN_NAME >> ~/.ssh/known_hosts
+  build:
+    commands:
+      - echo Cloning repository ...
+      - git clone $BACKLOG_SPACE_ID@$BACKLOG_SPACE_ID.git.$BACKLOG_DOMAIN_NAME:/$BACKLOG_PROJECT_KEY/$BACKLOG_REPOSITORY_NAME.git
+      - cd $BACKLOG_REPOSITORY_NAME
+      - COMMIT_HASH=$(git log -n 1 --pretty=format:"%H" | cut -c 1-10)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo Build started on `date`
+      - echo Building Docker image...
+      - docker image build -f docker/Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:$IMAGE_TAG docker
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo Pushing Docker image...
+      - docker image push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:$IMAGE_TAG
+      - printf '{"ImageURI":"%s"}' $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME:$IMAGE_TAG > $CODEBUILD_SRC_DIR/imageDetail.json
+      - cd codesries_asset
+      - sed -i -e "s#<TASK_FAMILY>#${TASK_FAMILY}#" taskdef.json
+      - sed -i -e "s#<TASK_EXECUTION_ROLE_ARN>#${TASK_EXECUTION_ROLE_ARN}#" taskdef.json
+      - sed -i -e "s#<CONTAINER_NAME>#${CONTAINER_NAME}#" taskdef.json
+      - sed -i -e "s#<AWS_DEFAULT_REGION>#${AWS_DEFAULT_REGION}#" taskdef.json
+      - sed -i -e "s#<LOG_GROUP_NAME>#${LOG_GROUP_NAME}#" taskdef.json
+      - sed -i -e "s#<LOG_STREAM_PREFIX>#${LOG_STREAM_PREFIX}#" taskdef.json
+      - sed -i -e "s#<CONTAINER_NAME>#${CONTAINER_NAME}#" appspec.yaml
+      - cp -p taskdef.json $CODEBUILD_SRC_DIR/
+      - cp -p appspec.yaml $CODEBUILD_SRC_DIR/
+artifacts:
+  files:
+    - imageDetail.json
+    - taskdef.json
+    - appspec.yaml
+
+cache:
+  paths:
+    - /root/.cache/pip/**/*
