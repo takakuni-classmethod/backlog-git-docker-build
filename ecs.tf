@@ -132,6 +132,12 @@ resource "aws_lb_listener_rule" "alb_80_web" {
       values = ["/"]
     }
   }
+
+  lifecycle {
+    ignore_changes = [
+      action
+    ]
+  }
 }
 
 resource "aws_lb_target_group" "green" {
@@ -166,6 +172,12 @@ resource "aws_lb_listener_rule" "alb_8080_web" {
     path_pattern {
       values = ["/"]
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      action
+    ]
   }
 }
 
