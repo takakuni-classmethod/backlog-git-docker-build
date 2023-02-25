@@ -1,6 +1,6 @@
 # はじめに
 
-[Backlog の Git リポジトリから Docker イメージをビルドしてみた](https://dev.classmethod.jp/articles/backlog-git-docker-build-cicd-pipeline)のサンプルコードになります。
+[Backlog の Git リポジトリをソースとした Docker イメージのビルドパイプラインを作ってみた](https://dev.classmethod.jp/articles/backlog-git-docker-build-cicd-pipeline)のサンプルコードになります。
 
 # 構成図
 
